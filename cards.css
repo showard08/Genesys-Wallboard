@@ -488,8 +488,10 @@ html.agent-cards-wallboard .flow-layout-main {
   min-height: 0 !important;
 }
 
-/* The widget fills the band; its own scroll container keeps the overflow,
-   so auto-scroll keeps working (and idles when everything fits). */
+/* The widget fills the band; scrolling happens INSIDE gux-table's shadow
+   root (Genesys's own .gux-table-container), which cards.js's discovery
+   knows to look for — so no overflow rule here, or two nested scrollers
+   would fight. */
 html.agent-cards-wallboard .flow-layout-sidebar .analytics-ui-dashboard-card-widget {
   width: 100% !important;
   max-width: none !important;
