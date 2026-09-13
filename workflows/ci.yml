@@ -1,0 +1,65 @@
+# Runs on every push and pull request: validates the manifest, checks that
+# every file the extension loads actually exists, and builds the package the
+# same way the release workflow will — so a broken commit is caught the day
+# it lands, not on release day.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          jq empty manifest.json
+          DESC_LEN=$(jq -r '.description | length' manifest.json)
+          if [ "$DESC_LEN" -gt 132 ]; then
+            echo "::error::manifest description is $DESC_LEN chars — the Edge store caps it at 132"
+            exit 1
+          fi
+          echo "Manifest OK (description $DESC_LEN chars)"
+
+      - name: Check every referenced file exists
+        run: |
+          MISSING=0
+          # Files the manifest references
+          for f in $(jq -r '
+              [.background.service_worker,
+               .action.default_popup,
+               (.icons // {} | to_entries[].value)
+              ] | map(select(. != null)) | unique | .[]' manifest.json); do
+            [ -f "$f" ] || { echo "::error::manifest references $f but it does not exist"; MISSING=1; }
+          done
+          # Files sites.js registers as content scripts/styles
+          for f in $(grep -oE "'[a-z-]+\.(js|css)'" sites.js | tr -d "'" | sort -u); do
+            [ -f "$f" ] || { echo "::error::sites.js references $f but it does not exist"; MISSING=1; }
+          done
+          # Files the service worker imports
+          for f in $(grep -oE "importScripts\([^)]*\)" background.js | grep -oE "'[^']+'" | tr -d "'"); do
+            [ -f "$f" ] || { echo "::error::background.js imports $f but it does not exist"; MISSING=1; }
+          done
+          exit $MISSING
+
+      - name: Build package (same recipe as release)
+        run: |
+          zip -r extension.zip . \
+            -x ".git/*" ".github/*" "*.md" "LICENSE" "extension.zip"
+          unzip -l extension.zip
+
+      - name: Check package contains every referenced file
+        run: |
+          MISSING=0
+          REFS=$( (jq -r '[.background.service_worker, .action.default_popup, (.icons // {} | to_entries[].value)] | map(select(. != null)) | .[]' manifest.json; \
+                   grep -oE "'[a-z-]+\.(js|css)'" sites.js | tr -d "'"; \
+                   grep -oE "importScripts\([^)]*\)" background.js | grep -oE "'[^']+'" | tr -d "'") | sort -u )
+          for f in $REFS; do
+            unzip -l extension.zip | grep -q " $f\$" || { echo "::error::$f is loaded by the extension but missing from the package"; MISSING=1; }
+          done
+          exit $MISSING
