@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Agent Wallboard settings</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #1f2328;
+    }
+    body { margin: 0; width: 300px; background: #fff; }
+    header {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: baseline; justify-content: space-between;
+    }
+    h1 { margin: 0; font-size: 14px; font-weight: 650; }
+    #saved { font-size: 11px; color: #21a453; opacity: 0; transition: opacity .2s; }
+    #saved.show { opacity: 1; }
+    section {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f0f1f3;
+    }
+    h2 {
+      margin: 0 0 8px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; color: #6b7280;
+    }
+    .row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin: 6px 0;
+    }
+    .row label { flex: 1; }
+    .row.sub { padding-left: 18px; }
+    .row.disabled { opacity: .45; pointer-events: none; }
+    .seg { display: flex; border: 1px solid #d0d5dd; border-radius: 6px; overflow: hidden; }
+    .seg label {
+      flex: 1; text-align: center; padding: 6px 4px; cursor: pointer;
+      font-weight: 500; user-select: none;
+    }
+    .seg input { display: none; }
+    .seg label:has(input:checked) { background: #2f80ed; color: #fff; }
+    .seg label + label { border-left: 1px solid #d0d5dd; }
+    input[type="number"], select {
+      width: 72px; padding: 4px 6px; border: 1px solid #d0d5dd; border-radius: 5px;
+      font: inherit; text-align: right;
+    }
+    select { text-align: left; }
+    input[type="range"] { width: 120px; }
+    .unit { color: #6b7280; font-size: 11px; width: 34px; }
+    .value { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type="checkbox"] { width: 16px; height: 16px; margin: 0; }
+    footer {
+      padding: 10px 16px 12px; display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    footer small { color: #6b7280; }
+    button {
+      font: inherit; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+      border: 1px solid #d0d5dd; background: #f9fafb;
+    }
+    button:hover { background: #eef1f5; }
+    button.primary { background: #2f80ed; border-color: #2f80ed; color: #fff; width: 100%; }
+    button.primary:hover { background: #2569c9; }
+    button.small { padding: 2px 8px; font-size: 11px; }
+
+    /* Sites list */
+    #sites { list-style: none; margin: 0 0 8px; padding: 0; }
+    #sites li {
+      display: flex; align-items: center; gap: 8px; padding: 5px 0;
+      border-bottom: 1px dashed #eceef1;
+    }
+    #sites li:last-child { border-bottom: 0; }
+    #sites .host { flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #sites .warn { color: #d97706; font-size: 11px; }
+    #sites .empty { color: #6b7280; font-size: 12px; }
+    #siteMsg { min-height: 1em; margin-top: 6px; font-size: 11px; color: #6b7280; }
+    #siteMsg.error { color: #d93025; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agent Wallboard</h1>
+    <span id="saved">Saved ✓</span>
+  </header>
+
+  <section>
+    <h2>Enabled on</h2>
+    <ul id="sites"></ul>
+    <button id="addSite" class="primary" type="button">Add current tab's site</button>
+    <div id="siteMsg"></div>
+  </section>
+
+  <section>
+    <h2>Layout</h2>
+    <div class="seg" role="radiogroup" aria-label="Card style">
+      <label><input type="radio" name="style" value="large"><span>Large boxes</span></label>
+      <label><input type="radio" name="style" value="compact"><span>Compact rows</span></label>
+    </div>
+    <div class="row" id="columnsRow" style="margin-top:10px">
+      <label for="columns">Cards per row</label>
+      <select id="columns">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="fontScale">Text size</label>
+      <input type="range" id="fontScale" min="0.8" max="1.6" step="0.05">
+      <span class="value" id="fontScaleValue"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Wallboard mode</h2>
+    <div class="row">
+      <label for="wallboard">Full-width agent wallboard on top</label>
+      <input type="checkbox" id="wallboard">
+    </div>
+    <div class="row sub" data-depends="wallboard">
+      <label for="wallboardHeight">Wallboard height</label>
+      <input type="range" id="wallboardHeight" min="20" max="90" step="5">
+      <span class="value" id="wallboardHeightValue"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Auto-scroll</h2>
+    <div class="row">
+      <label for="autoScroll">Scroll when the list overflows</label>
+      <input type="checkbox" id="autoScroll">
+    </div>
+    <div class="row sub" data-depends="autoScroll">
+      <label for="scrollSpeed">Speed</label>
+      <input type="number" id="scrollSpeed" min="5" max="300" step="5">
+      <span class="unit">px/s</span>
+    </div>
+    <div class="row sub" data-depends="autoScroll">
+      <label for="edgePause">Pause at each end</label>
+      <input type="number" id="edgePause" min="0" max="60" step="0.5">
+      <span class="unit">sec</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Interacting (on a call)</h2>
+    <div class="row">
+      <label for="callGlow">Blue glow on the card</label>
+      <input type="checkbox" id="callGlow">
+    </div>
+    <div class="row sub" data-depends="callGlow">
+      <label for="glowPulse">Pulse the glow</label>
+      <input type="checkbox" id="glowPulse">
+    </div>
+    <div class="row">
+      <label for="callTimerReplaces">Show call timer instead of status timer</label>
+      <input type="checkbox" id="callTimerReplaces">
+    </div>
+  </section>
+
+  <footer>
+    <small>Changes apply live to the wallboard.</small>
+    <button id="reset" type="button">Reset</button>
+  </footer>
+
+  <script src="defaults.js"></script>
+  <script src="sites.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

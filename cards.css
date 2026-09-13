@@ -1,0 +1,538 @@
+/* Genesys Cloud wallboard — Agent Status widget: table rows → stacked cards.
+   Pure CSS, no JS: everything is scoped to .widget-type-AGENT_STATUS so no
+   other dashboard table is touched, and the DOM is never modified so Ember's
+   live re-renders and per-second timers keep working untouched. */
+
+.widget-type-AGENT_STATUS gux-table table {
+  display: block !important;
+  width: 100% !important;
+}
+
+/* The cards' parent panel: drop its white background, border and shadow so
+   the cards sit directly on the dashboard */
+.widget-type-AGENT_STATUS gux-table,
+.widget-type-AGENT_STATUS gux-table table,
+.widget-type-AGENT_STATUS gux-table table tbody {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Header row (Agent / Status / Duration) not needed on cards */
+.widget-type-AGENT_STATUS gux-table thead {
+  display: none !important;
+}
+
+.widget-type-AGENT_STATUS gux-table tbody {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 2px;
+  box-sizing: border-box;
+}
+
+/* Each row becomes a card */
+.widget-type-AGENT_STATUS gux-table tbody tr {
+  position: relative;
+  zoom: var(--agent-cards-scale, 1); /* "Text size" in the popup */
+  overflow: hidden; /* clips the call-glow overlay to the rounded corners */
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 6px solid #9e9e9e;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+}
+
+/* Cells go transparent — gux-table paints them white/striped, which shows up
+   as boxes floating inside the card otherwise */
+.widget-type-AGENT_STATUS gux-table tbody td {
+  display: block !important;
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  white-space: normal !important;
+}
+
+/* ── Compact style ───────────────────────────────────────────────────────
+   Thin single-row cards: name | status | duration. Turned on by cards.js
+   putting .agent-cards-compact on <html> (STYLE constant at the top of
+   cards.js). The html-class prefix outranks the base rules above. */
+
+html.agent-cards-compact .widget-type-AGENT_STATUS gux-table tbody {
+  gap: 6px;
+}
+
+/* Two-row grid: name over status on the left, duration owning the right */
+html.agent-cards-compact .widget-type-AGENT_STATUS gux-table tbody tr {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "name   duration"
+    "status duration";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 0;
+  text-align: left;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* Any cell beyond the three we lay out would land in an implicit extra grid
+   row and stretch the card — drop them */
+html.agent-cards-compact .widget-type-AGENT_STATUS gux-table tbody tr
+  > td:not(.column-agent):not(.column-statusAndPresence):not(.column-unifiedDuration) {
+  display: none !important;
+}
+
+/* The widget sizes cell innards for full-height table rows; stacked, that
+   doubles the card. Collapse them to their content. */
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-agent,
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-agent .hyperlink-cell,
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-statusAndPresence,
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-statusAndPresence .entity-wrapper {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.agent-cards-compact .widget-type-AGENT_STATUS gux-table tbody td {
+  width: auto !important;
+}
+
+/* Name: top-left, takes the spare width, truncates instead of wrapping */
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-agent {
+  grid-area: name;
+  align-self: end;
+  min-width: 0;
+  overflow: hidden;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-agent .hyperlink-cell a {
+  display: block;
+  font-size: 1.45em !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status: bottom-left corner, directly under the name */
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-statusAndPresence {
+  grid-area: status;
+  align-self: start;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-statusAndPresence .entity-wrapper {
+  justify-content: flex-start;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-statusAndPresence .additional-label {
+  font-size: 0.95em !important;
+  white-space: nowrap;
+}
+
+/* Duration: right-aligned column, still the visual anchor. Laid out as a
+   reversed flex row so the big timer keeps the right edge and any extras
+   (call timer, hold status) sit inline to its LEFT instead of stacking
+   below and spilling out of the thin card. min-width keeps the right-hand
+   column aligned; spare space is taken from the (truncating) name. */
+html.agent-cards-compact .widget-type-AGENT_STATUS td.column-unifiedDuration {
+  grid-area: duration;
+  align-self: center;
+  min-width: 88px;
+  text-align: right;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS .conversation-duration-cell-v2 {
+  display: flex !important;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-in-status {
+  font-size: 1.45em !important;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS .conversation-duration-cell-v2 .duration {
+  justify-content: flex-end;
+}
+html.agent-cards-compact .widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-duration,
+html.agent-cards-compact .widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-duration a {
+  font-size: 1em !important;
+}
+
+/* ── Name: top, full width, bold ─────────────────────────────────────── */
+
+.widget-type-AGENT_STATUS td.column-agent {
+  order: 1;
+}
+
+.widget-type-AGENT_STATUS td.column-agent .hyperlink-cell a {
+  font-size: 1.35em !important;
+  font-weight: 700 !important;
+  line-height: 1.25;
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+/* ── Status: presence dot + label under the name ─────────────────────── */
+
+.widget-type-AGENT_STATUS td.column-statusAndPresence {
+  order: 2;
+}
+
+.widget-type-AGENT_STATUS td.column-statusAndPresence .entity-wrapper {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.widget-type-AGENT_STATUS td.column-statusAndPresence .additional-label {
+  font-size: 1.1em !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Duration / call status: biggest element on the card ─────────────── */
+
+.widget-type-AGENT_STATUS td.column-unifiedDuration {
+  order: 3;
+}
+
+.widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-in-status {
+  font-size: 1.7em !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Active call row: phone icon + call-duration link */
+.widget-type-AGENT_STATUS .conversation-duration-cell-v2 .duration {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-duration,
+.widget-type-AGENT_STATUS .conversation-duration-cell-v2 .time-duration a {
+  font-size: 1.05em !important;
+  font-variant-numeric: tabular-nums;
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+/* ── Status colour coding ────────────────────────────────────────────────
+   Keyed off the presence-indicator dot's class (available / idle / on_queue /
+   busy / away / break / meal / …) via :has(), which needs Edge/Chrome 105+.
+   The label class alone can't be used — OFF_QUEUE covers both Available and
+   Away, but the dot class always distinguishes them.
+   idle dot     = on queue, waiting for a call
+   on_queue dot = on queue, interacting (on a call) */
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.available) {
+  border-left-color: #21a453 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.available) .additional-label {
+  color: #21a453 !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.idle) {
+  border-left-color: #12a4b8 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.idle) .additional-label {
+  color: #12a4b8 !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.on_queue) {
+  border-left-color: #2f80ed !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.on_queue) .additional-label {
+  color: #2f80ed !important;
+}
+
+/* Interacting: pulsing blue glow creeping in from the right ~quarter of the
+   card, so agents on a call jump out on the board. Painted on an ::after
+   overlay so the gradient can breathe (gradients themselves don't animate).
+   Keyed off the Interacting presence dot only. Popup toggles: .agent-cards-
+   no-glow disables it, .agent-cards-no-pulse keeps it steady. */
+html:not(.agent-cards-no-glow) .widget-type-AGENT_STATUS gux-table tbody tr:has(.entity-v3-presence-indicator-dot.on_queue)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+  background: linear-gradient(to left, rgba(47, 128, 237, 0.30), rgba(47, 128, 237, 0));
+  animation: call-glow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes call-glow {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+html.agent-cards-no-pulse .widget-type-AGENT_STATUS gux-table tbody tr:has(.entity-v3-presence-indicator-dot.on_queue)::after {
+  animation: none !important;
+  opacity: 0.8;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.busy) {
+  border-left-color: #d93025 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.busy) .additional-label {
+  color: #d93025 !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.break) {
+  border-left-color: #f5a623 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.break) .additional-label {
+  color: #f5a623 !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.meal) {
+  border-left-color: #e8710a !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.meal) .additional-label {
+  color: #e8710a !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.away) {
+  border-left-color: #9aa0a6 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.away) .additional-label {
+  color: #9aa0a6 !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.meeting),
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.training) {
+  border-left-color: #8e44ad !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.meeting) .additional-label,
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.training) .additional-label {
+  color: #8e44ad !important;
+}
+
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.offline) {
+  border-left-color: #6b7280 !important;
+}
+.widget-type-AGENT_STATUS tbody tr:has(.entity-v3-presence-indicator-dot.offline) .additional-label {
+  color: #6b7280 !important;
+}
+
+/* ── Large (box) style ───────────────────────────────────────────────────
+   Cards in a 2-up grid of boxes, each with name / status / timer stacked
+   and centred. Scoped by cards.js putting .agent-cards-large on <html>. */
+
+html.agent-cards-large .widget-type-AGENT_STATUS gux-table tbody {
+  display: grid !important;
+  grid-template-columns: repeat(var(--agent-cards-cols, 2), minmax(0, 1fr)); /* "Cards per row" in the popup */
+  gap: 10px;
+}
+
+html.agent-cards-large .widget-type-AGENT_STATUS gux-table tbody tr {
+  padding: 12px 10px;
+  gap: 4px;
+  justify-content: center;
+}
+
+/* Cells flex-centre their content — Genesys left-aligns the name and timer
+   internally, which inherited text-align can't beat */
+html.agent-cards-large .widget-type-AGENT_STATUS gux-table tbody td {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Collapse the widget's full-row innard sizing so the vertical rhythm of
+   name → status → timer is even */
+html.agent-cards-large .widget-type-AGENT_STATUS td.column-agent .hyperlink-cell,
+html.agent-cards-large .widget-type-AGENT_STATUS td.column-statusAndPresence .entity-wrapper,
+html.agent-cards-large .widget-type-AGENT_STATUS .conversation-duration-cell-v2 {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Name: one line, centred, truncates with … instead of wrapping so every
+   box stays the same height */
+html.agent-cards-large .widget-type-AGENT_STATUS td.column-agent .hyperlink-cell {
+  max-width: 100%;
+}
+html.agent-cards-large .widget-type-AGENT_STATUS td.column-agent .hyperlink-cell a {
+  display: block;
+  max-width: 100%;
+  line-height: 1.2;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Timer block: big timer centred, call row tucked under it */
+html.agent-cards-large .widget-type-AGENT_STATUS .conversation-duration-cell-v2 {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ── Interacting: the call timer IS the timer ────────────────────────────
+   On a call the time-in-status and call duration show near-identical times,
+   so hide the main timer and size the call row up to take its place. Only
+   when the call row is actually present, so a card never loses its timer.
+   Popup toggle: .agent-cards-keep-timer on <html> switches this off. */
+
+html:not(.agent-cards-keep-timer) .widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue):has(.conversation-duration-cell-v2 .duration)
+  .conversation-duration-cell-v2 .time-in-status {
+  display: none !important;
+}
+
+html:not(.agent-cards-keep-timer) .widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .time-duration {
+  font-size: 1.7em !important; /* matches .time-in-status in large style */
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+}
+/* The link inherits the wrapper's size — sizing both compounds (1.7 × 1.7) */
+.widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .time-duration a {
+  font-size: 1em !important;
+}
+
+/* Phone icon: sized to sit alongside the promoted call timer */
+html:not(.agent-cards-keep-timer) .widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .duration gux-icon {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 18px !important; /* size="inherit" icons key off font-size */
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* One timer per card: Genesys can append extra sub-legs (after-call work,
+   notes, consult) under the phone leg — drop them on interacting cards,
+   whether they render as siblings after the call row… */
+.widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .duration ~ * {
+  display: none !important;
+}
+/* …or as extra items inside it (first two children = phone icon + timer) */
+.widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .duration > *:nth-child(n+3) {
+  display: none !important;
+}
+
+/* Compact's timer is smaller — match that size there instead */
+html.agent-cards-compact:not(.agent-cards-keep-timer) .widget-type-AGENT_STATUS gux-table tbody
+  tr:has(.entity-v3-presence-indicator-dot.on_queue)
+  .conversation-duration-cell-v2 .time-duration {
+  font-size: 1.45em !important;
+}
+
+
+/* ── Wallboard mode ───────────────────────────────────────────────────────
+   Promotes the Agent Status widget from Genesys' fixed 300px right sidebar
+   to a full-width band across the top of the dashboard, with every other
+   widget reflowing underneath. Layout-only: the dashboard grid's two
+   children (.flow-layout-main, .flow-layout-sidebar) are re-slotted with
+   grid placement — no element is moved, so Ember re-renders are unaffected.
+   Toggled by cards.js as html.agent-cards-wallboard; the band height comes
+   from --agent-cards-wallboard-h ("Wallboard height" in the popup). */
+
+html.agent-cards-wallboard .flow-layout-parent {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: var(--agent-cards-wallboard-h, 50vh) minmax(0, 1fr) !important;
+}
+
+/* Agents on top… */
+html.agent-cards-wallboard .flow-layout-sidebar {
+  grid-row: 1 !important;
+  grid-column: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;   /* fill the band row */
+  min-height: 0 !important;  /* allow the row, not the content, to set height */
+}
+
+/* …everything else underneath */
+html.agent-cards-wallboard .flow-layout-main {
+  grid-row: 2 !important;
+  grid-column: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+}
+
+/* The widget fills the band; its own scroll container keeps the overflow,
+   so auto-scroll keeps working (and idles when everything fits). */
+html.agent-cards-wallboard .flow-layout-sidebar .analytics-ui-dashboard-card-widget {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Wallboard + compact rows: flow the thin rows into columns instead of one
+   row stretched across the full width. Reuses the same "Cards per row"
+   setting as large style (--agent-cards-cols). */
+html.agent-cards-wallboard.agent-cards-compact .widget-type-AGENT_STATUS gux-table tbody {
+  display: grid !important;
+  grid-template-columns: repeat(var(--agent-cards-cols, 2), minmax(0, 1fr));
+  align-content: start;
+}
+
+/* ── Not Responding: whole card pulses red ───────────────────────────────
+   An agent who missed an alerting interaction needs to be unmissable on the
+   board. Keyed off BOTH plausible Genesys hooks — a not_responding presence
+   dot class, or a NOT_RESPONDING routing-status class on the label — so
+   whichever one Genesys emits, the card lights up. Painted on the card's own
+   background + border so it works in every style and in wallboard mode.
+   (Animation is on the tr; the Interacting glow lives on ::after, so the two
+   can coexist without fighting.) */
+.widget-type-AGENT_STATUS gux-table tbody tr:has(.entity-v3-presence-indicator-dot.not_responding),
+.widget-type-AGENT_STATUS gux-table tbody tr:has([class*="NOT_RESPONDING"]),
+.widget-type-AGENT_STATUS gux-table tbody tr:has([class*="not-responding"]) {
+  border-left-color: #dc2626 !important;
+  animation: agent-cards-not-responding 1.1s ease-in-out infinite;
+}
+.widget-type-AGENT_STATUS gux-table tbody tr:has(.entity-v3-presence-indicator-dot.not_responding) .additional-label,
+.widget-type-AGENT_STATUS gux-table tbody tr:has([class*="NOT_RESPONDING"]) .additional-label,
+.widget-type-AGENT_STATUS gux-table tbody tr:has([class*="not-responding"]) .additional-label {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+@keyframes agent-cards-not-responding {
+  0%, 100% {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+  50% {
+    background-color: #fee2e2;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.55), 0 0 18px rgba(220, 38, 38, 0.35);
+  }
+}

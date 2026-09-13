@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Genesys Agent Wallboard",
+  "version": "0.1.0",
+  "description": "Turns the Agent Status widget on a Genesys Cloud analytics dashboard into an agent wallboard: status cards, full-width wallboard mode, auto-scroll. Enable it on your own Genesys domain from the popup.",
+  "permissions": ["storage", "scripting", "activeTab"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Agent Wallboard settings", "default_popup": "popup.html" },
+  "icons": { "16": "icon-16.png", "32": "icon-32.png", "48": "icon-48.png", "128": "icon-128.png" }
+}
