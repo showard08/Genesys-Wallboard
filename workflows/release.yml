@@ -1,0 +1,138 @@
+# One-button release to the Microsoft Edge Add-ons store.
+#
+# Run it from the Actions tab ("Run workflow"): pick patch/minor/major (or
+# type an exact version). The workflow bumps manifest.json, commits, tags,
+# packages the WHOLE tree (no hand-maintained file list), verifies the
+# package, uploads it, and submits for certification. Because the workflow
+# itself makes the version commit and tag, it is impossible to tag a commit
+# that doesn't contain what was just written — the failure mode that bit the
+# sibling repo repeatedly.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   EDGE_PRODUCT_ID  – GUID from the extension overview page in Partner Center
+#   EDGE_CLIENT_ID   – from the Publish API page in Partner Center
+#   EDGE_API_KEY     – from the Publish API page in Partner Center
+#
+# NOTE: the first store submission must be made manually in Partner Center
+# (the Publish API can only update an existing product). Use this workflow
+# from the second release onward.
+
+name: Release to Edge Add-ons
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump'
+        required: true
+        default: 'patch'
+        type: choice
+        options: [patch, minor, major]
+      exact_version:
+        description: 'Exact version (overrides bump if set, e.g. 1.2.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute new version, bump manifest, commit and tag
+        id: ver
+        run: |
+          CURRENT=$(jq -r .version manifest.json)
+          if [ -n "${{ inputs.exact_version }}" ]; then
+            NEW="${{ inputs.exact_version }}"
+          else
+            IFS=. read -r MA MI PA <<< "$CURRENT"
+            case "${{ inputs.bump }}" in
+              major) NEW="$((MA+1)).0.0" ;;
+              minor) NEW="$MA.$((MI+1)).0" ;;
+              patch) NEW="$MA.$MI.$((PA+1))" ;;
+            esac
+          fi
+          echo "$CURRENT -> $NEW"
+          if ! echo "$NEW" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$NEW' is not in x.y.z form"; exit 1
+          fi
+          jq --arg v "$NEW" '.version = $v' manifest.json > m.tmp && mv m.tmp manifest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Release $NEW"
+          git tag "v$NEW"
+          git push origin HEAD "v$NEW"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Build package
+        run: |
+          zip -r extension.zip . \
+            -x ".git/*" ".github/*" "*.md" "LICENSE" "extension.zip"
+          unzip -l extension.zip
+
+      - name: Check package contains every referenced file
+        run: |
+          MISSING=0
+          REFS=$( (jq -r '[.background.service_worker, .action.default_popup, (.icons // {} | to_entries[].value)] | map(select(. != null)) | .[]' manifest.json; \
+                   grep -oE "'[a-z-]+\.(js|css)'" sites.js | tr -d "'"; \
+                   grep -oE "importScripts\([^)]*\)" background.js | grep -oE "'[^']+'" | tr -d "'") | sort -u )
+          for f in $REFS; do
+            unzip -l extension.zip | grep -q " $f\$" || { echo "::error::$f is loaded by the extension but missing from the package"; MISSING=1; }
+          done
+          exit $MISSING
+
+      - name: Upload package to draft submission
+        id: upload
+        run: |
+          HEADERS=$(mktemp)
+          BODY=$(curl -s -w '\nHTTP %{http_code}' -D "$HEADERS" \
+            -H "Authorization: ApiKey ${{ secrets.EDGE_API_KEY }}" \
+            -H "X-ClientID: ${{ secrets.EDGE_CLIENT_ID }}" \
+            -H "Content-Type: application/zip" \
+            -X POST -T extension.zip \
+            "https://api.addons.microsoftedge.microsoft.com/v1/products/${{ secrets.EDGE_PRODUCT_ID }}/submissions/draft/package")
+          echo "$BODY"
+          OP=$(grep -i '^location:' "$HEADERS" | tr -d '\r' | awk '{print $2}')
+          OP="${OP##*/}"
+          if [ -z "$OP" ]; then echo "::error::No operation ID returned — see response above"; exit 1; fi
+          echo "operation=$OP" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for package processing
+        run: |
+          for i in $(seq 1 30); do
+            BODY=$(curl -sf \
+              -H "Authorization: ApiKey ${{ secrets.EDGE_API_KEY }}" \
+              -H "X-ClientID: ${{ secrets.EDGE_CLIENT_ID }}" \
+              "https://api.addons.microsoftedge.microsoft.com/v1/products/${{ secrets.EDGE_PRODUCT_ID }}/submissions/draft/package/operations/${{ steps.upload.outputs.operation }}")
+            STATUS=$(echo "$BODY" | jq -r '.status // empty')
+            echo "Upload status: ${STATUS:-unknown}"
+            if [ "$STATUS" = "Succeeded" ]; then exit 0; fi
+            if [ "$STATUS" = "Failed" ]; then
+              echo "::error::Package processing failed — full response follows"
+              echo "$BODY" | jq .
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for package processing"
+          exit 1
+
+      - name: Publish the draft submission
+        run: |
+          BODY=$(curl -s -w '\nHTTP %{http_code}' \
+            -H "Authorization: ApiKey ${{ secrets.EDGE_API_KEY }}" \
+            -H "X-ClientID: ${{ secrets.EDGE_CLIENT_ID }}" \
+            -X POST -d '' \
+            "https://api.addons.microsoftedge.microsoft.com/v1/products/${{ secrets.EDGE_PRODUCT_ID }}/submissions")
+          echo "$BODY"
+          CODE=$(echo "$BODY" | tail -1 | awk '{print $2}')
+          if [ "$CODE" -ge 400 ] 2>/dev/null; then
+            echo "::error::Publish call failed — see response above"
+            exit 1
+          fi
+          echo "Version ${{ steps.ver.outputs.version }} submitted for certification — it goes live automatically once approved."
