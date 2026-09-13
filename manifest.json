@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Genesys Agent Wallboard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turns the Genesys Cloud Agent Status widget into an agent wallboard with status cards, wallboard mode and auto-scroll.",
   "permissions": [
     "storage",
