@@ -123,19 +123,38 @@ $('addSite').addEventListener('click', () => {
 renderSites();
 
 // ── Settings ─────────────────────────────────────────────────────────────
+// The look (style / columns / text size) is a per-mode profile: the popup's
+// three controls always show and edit the ACTIVE mode's profile. Toggling
+// wallboard swaps the controls to the other profile's saved values.
+
+let current = { ...AGENT_CARDS_DEFAULTS };
+let lastWallboard = null;
+
+function profileKeys() {
+  return $('wallboard').checked
+    ? { style: 'wallboardStyle', columns: 'wallboardColumns', fontScale: 'wallboardFontScale' }
+    : { style: 'style', columns: 'columns', fontScale: 'fontScale' };
+}
+
+function renderProfile() {
+  const k = profileKeys();
+  document.querySelector(`input[name="style"][value="${current[k.style]}"]`).checked = true;
+  $('columns').value = String(current[k.columns]);
+  $('fontScale').value = String(current[k.fontScale]);
+}
 
 function render(s) {
-  document.querySelector(`input[name="style"][value="${s.style}"]`).checked = true;
-  $('columns').value = String(s.columns);
-  $('fontScale').value = String(s.fontScale);
-  $('autoScroll').checked = s.autoScroll;
-  $('scrollSpeed').value = String(s.scrollSpeed);
-  $('edgePause').value = String(s.edgePause);
-  $('callGlow').checked = s.callGlow;
-  $('glowPulse').checked = s.glowPulse;
-  $('callTimerReplaces').checked = s.callTimerReplaces;
-  $('wallboard').checked = s.wallboard;
-  $('wallboardHeight').value = String(s.wallboardHeight);
+  current = { ...AGENT_CARDS_DEFAULTS, ...s };
+  $('wallboard').checked = current.wallboard;
+  lastWallboard = current.wallboard;
+  renderProfile();
+  $('autoScroll').checked = current.autoScroll;
+  $('scrollSpeed').value = String(current.scrollSpeed);
+  $('edgePause').value = String(current.edgePause);
+  $('callGlow').checked = current.callGlow;
+  $('glowPulse').checked = current.glowPulse;
+  $('callTimerReplaces').checked = current.callTimerReplaces;
+  $('wallboardHeight').value = String(current.wallboardHeight);
   refresh();
 }
 
@@ -144,19 +163,19 @@ function read() {
     const v = parseFloat($(id).value);
     return Number.isFinite(v) ? v : fallback;
   };
-  return {
-    style: document.querySelector('input[name="style"]:checked').value,
-    columns: parseInt($('columns').value, 10),
-    fontScale: num('fontScale', AGENT_CARDS_DEFAULTS.fontScale),
-    autoScroll: $('autoScroll').checked,
-    scrollSpeed: num('scrollSpeed', AGENT_CARDS_DEFAULTS.scrollSpeed),
-    edgePause: num('edgePause', AGENT_CARDS_DEFAULTS.edgePause),
-    callGlow: $('callGlow').checked,
-    glowPulse: $('glowPulse').checked,
-    callTimerReplaces: $('callTimerReplaces').checked,
-    wallboard: $('wallboard').checked,
-    wallboardHeight: parseInt($('wallboardHeight').value, 10),
-  };
+  const k = profileKeys();
+  current[k.style] = document.querySelector('input[name="style"]:checked').value;
+  current[k.columns] = parseInt($('columns').value, 10);
+  current[k.fontScale] = num('fontScale', AGENT_CARDS_DEFAULTS[k.fontScale]);
+  current.autoScroll = $('autoScroll').checked;
+  current.scrollSpeed = num('scrollSpeed', AGENT_CARDS_DEFAULTS.scrollSpeed);
+  current.edgePause = num('edgePause', AGENT_CARDS_DEFAULTS.edgePause);
+  current.callGlow = $('callGlow').checked;
+  current.glowPulse = $('glowPulse').checked;
+  current.callTimerReplaces = $('callTimerReplaces').checked;
+  current.wallboard = $('wallboard').checked;
+  current.wallboardHeight = parseInt($('wallboardHeight').value, 10);
+  return { ...current };
 }
 
 // Derived UI state: value labels, dependent rows greyed out
@@ -173,6 +192,14 @@ function refresh() {
 
 let savedTimer;
 function save() {
+  // Wallboard toggled? Swap the three profile controls to the other mode's
+  // saved values BEFORE reading, so this mode's edits don't leak into the
+  // other mode's profile.
+  if ($('wallboard').checked !== lastWallboard) {
+    lastWallboard = $('wallboard').checked;
+    current.wallboard = lastWallboard;
+    renderProfile();
+  }
   refresh();
   chrome.storage.sync.set(read(), () => {
     $('saved').classList.add('show');
