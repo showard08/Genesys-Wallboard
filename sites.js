@@ -12,7 +12,14 @@ const CONTENT_CSS = ['cards.css'];
 const CONTENT_JS = ['defaults.js', 'cards.js'];
 
 function sitePatterns(host) {
-  return [`https://${host}/directory/*`];
+  /* Two patterns because the dashboard is TWO documents: the shell page at
+     /directory (the SPA route lives in the #fragment, which patterns can't
+     see), and the actual dashboard UI in an IFRAME served from
+     /analytics-ui/…. allFrames only injects into frames whose OWN URL
+     matches, so without the second pattern the widget's frame is never
+     styled on page load. "*" straight after the path segment covers both
+     with and without a trailing slash. */
+  return [`https://${host}/directory*`, `https://${host}/analytics-ui*`];
 }
 
 function siteScriptId(host) {
