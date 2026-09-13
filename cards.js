@@ -56,6 +56,16 @@
     for (const table of document.querySelectorAll(
       '.widget-type-AGENT_STATUS gux-table'
     )) {
+      // Genesys's Spark component scrolls the table INSIDE gux-table's
+      // shadow root (.gux-table-container, aria-label "Scrollable region").
+      // Shadow interiors are neither ancestors nor visible to normal
+      // queries, so check there first.
+      const inner = table.shadowRoot?.querySelector('.gux-table-container');
+      if (inner && inner.scrollHeight - inner.clientHeight > 4) {
+        found.add(inner);
+        continue;
+      }
+      // Fallback: a scrollable light-DOM ancestor (the pre-wallboard layout)
       for (let el = table.parentElement; el; el = el.parentElement) {
         if (el.scrollHeight - el.clientHeight > 4) {
           const oy = getComputedStyle(el).overflowY;
