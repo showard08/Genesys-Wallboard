@@ -16,15 +16,20 @@
 
   function apply() {
     const root = document.documentElement;
-    root.classList.toggle('agent-cards-large', settings.style === 'large');
-    root.classList.toggle('agent-cards-compact', settings.style === 'compact');
+    // The look comes from the active mode's profile (see defaults.js)
+    const wb = !!settings.wallboard;
+    const style = wb ? settings.wallboardStyle : settings.style;
+    const columns = wb ? settings.wallboardColumns : settings.columns;
+    const fontScale = wb ? settings.wallboardFontScale : settings.fontScale;
+    root.classList.toggle('agent-cards-large', style === 'large');
+    root.classList.toggle('agent-cards-compact', style === 'compact');
     root.classList.toggle('agent-cards-no-glow', !settings.callGlow);
     root.classList.toggle('agent-cards-no-pulse', !settings.glowPulse);
     root.classList.toggle('agent-cards-keep-timer', !settings.callTimerReplaces);
-    root.classList.toggle('agent-cards-wallboard', !!settings.wallboard);
+    root.classList.toggle('agent-cards-wallboard', wb);
     root.style.setProperty('--agent-cards-wallboard-h', settings.wallboardHeight + 'vh');
-    root.style.setProperty('--agent-cards-cols', String(settings.columns));
-    root.style.setProperty('--agent-cards-scale', String(settings.fontScale));
+    root.style.setProperty('--agent-cards-cols', String(columns));
+    root.style.setProperty('--agent-cards-scale', String(fontScale));
   }
 
   apply();
