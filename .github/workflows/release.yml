@@ -44,13 +44,19 @@ jobs:
 
       - name: Compute new version, bump manifest, commit and tag
         id: ver
+        # Inputs are passed through env, never interpolated into the script:
+        # a ${{ inputs.x }} inside `run:` is substituted as literal text
+        # before bash sees it, so a crafted value could inject commands.
+        env:
+          INPUT_EXACT_VERSION: ${{ inputs.exact_version }}
+          INPUT_BUMP: ${{ inputs.bump }}
         run: |
           CURRENT=$(jq -r .version manifest.json)
-          if [ -n "${{ inputs.exact_version }}" ]; then
-            NEW="${{ inputs.exact_version }}"
+          if [ -n "$INPUT_EXACT_VERSION" ]; then
+            NEW="$INPUT_EXACT_VERSION"
           else
             IFS=. read -r MA MI PA <<< "$CURRENT"
-            case "${{ inputs.bump }}" in
+            case "$INPUT_BUMP" in
               major) NEW="$((MA+1)).0.0" ;;
               minor) NEW="$MA.$((MI+1)).0" ;;
               patch) NEW="$MA.$MI.$((PA+1))" ;;

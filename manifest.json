@@ -9,7 +9,13 @@
     "activeTab"
   ],
   "optional_host_permissions": [
-    "https://*/*"
+    "https://*.mypurecloud.com/*",
+    "https://*.mypurecloud.ie/*",
+    "https://*.mypurecloud.de/*",
+    "https://*.mypurecloud.jp/*",
+    "https://*.mypurecloud.com.au/*",
+    "https://*.pure.cloud/*",
+    "https://*.us-gov-pure.cloud/*"
   ],
   "background": {
     "service_worker": "background.js"
