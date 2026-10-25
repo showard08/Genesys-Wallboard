@@ -48,6 +48,7 @@
     select { text-align: left; }
     input[type="range"] { width: 120px; }
     .unit { color: #6b7280; font-size: 11px; width: 34px; }
+    .hint { color: #6b7280; font-size: 11px; margin-top: 6px; }
     .value { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
     input[type="checkbox"] { width: 16px; height: 16px; margin: 0; }
     footer {
@@ -114,6 +115,16 @@
       <input type="range" id="fontScale" min="0.8" max="1.6" step="0.05">
       <span class="value" id="fontScaleValue"></span>
     </div>
+  </section>
+
+  <section>
+    <h2>Theme</h2>
+    <div class="seg" role="radiogroup" aria-label="Colour theme">
+      <label><input type="radio" name="theme" value="auto"><span>Auto</span></label>
+      <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+      <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+    </div>
+    <div class="hint">Auto follows the dark-mode toggle on the Genesys dashboard.</div>
   </section>
 
   <section>

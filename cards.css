@@ -52,6 +52,20 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
 }
 
+/* ── Dark mode ───────────────────────────────────────────────────────────
+   Genesys' own dark-mode toggle paints the dashboard #131315 and makes the
+   text white; cards.js detects that (or the popup's Theme setting forces
+   it) and puts .agent-cards-dark on <html>. Cards go to a dark grey a step
+   lighter than the page so they still read as cards, with the text pinned
+   light so it's legible even if Genesys' colour doesn't reach it. Status
+   colours are unchanged — they were chosen to read on both. */
+html.agent-cards-dark .widget-type-AGENT_STATUS gux-table tbody tr {
+  background: #202024 !important;
+  color: #f3f4f6 !important;
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.50);
+}
+
 /* Cells go transparent — gux-table paints them white/striped, which shows up
    as boxes floating inside the card otherwise */
 .widget-type-AGENT_STATUS gux-table tbody td {
@@ -536,5 +550,21 @@ html.agent-cards-wallboard.agent-cards-compact .widget-type-AGENT_STATUS gux-tab
   50% {
     background-color: #fee2e2;
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.55), 0 0 18px rgba(220, 38, 38, 0.35);
+  }
+}
+/* Dark mode: same pulse, from the dark card colour to a deep red */
+html.agent-cards-dark .widget-type-AGENT_STATUS gux-table tbody tr:has(.entity-v3-presence-indicator-dot.not_responding),
+html.agent-cards-dark .widget-type-AGENT_STATUS gux-table tbody tr:has([class*="NOT_RESPONDING"]),
+html.agent-cards-dark .widget-type-AGENT_STATUS gux-table tbody tr:has([class*="not-responding"]) {
+  animation-name: agent-cards-not-responding-dark;
+}
+@keyframes agent-cards-not-responding-dark {
+  0%, 100% {
+    background-color: #202024;
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+  50% {
+    background-color: #4c1a1d;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.65), 0 0 18px rgba(220, 38, 38, 0.45);
   }
 }

@@ -30,6 +30,73 @@
     root.style.setProperty('--agent-cards-wallboard-h', settings.wallboardHeight + 'vh');
     root.style.setProperty('--agent-cards-cols', String(columns));
     root.style.setProperty('--agent-cards-scale', String(fontScale));
+    applyTheme();
+  }
+
+  // ── Theme ──────────────────────────────────────────────────────────────
+  // Genesys has its own dark-mode toggle on the dashboard: it repaints the
+  // page #131315 and turns the text white, but the cards' white background
+  // is ours — so without this the names and timers vanish (white on white).
+  // 'auto' (default) follows Genesys: look for an explicit theme hook on
+  // <html>/<body>, else sample the colour actually painted behind the
+  // widget. Sampling rather than relying on a class name means it keeps
+  // working when Genesys renames things. Result → html.agent-cards-dark,
+  // which cards.css keys the dark palette off.
+  function luminance(color) {
+    const m = /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+%?))?\s*\)$/.exec(color || '');
+    if (!m) return null;
+    const alpha = m[4] == null ? 1 : parseFloat(m[4]) / (m[4].endsWith('%') ? 100 : 1);
+    if (alpha < 0.5) return null; // (near-)transparent: whatever's behind shows through
+    return (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
+  }
+
+  function genesysIsDark() {
+    const root = document.documentElement;
+    const body = document.body;
+    for (const el of [root, body]) {
+      if (!el) continue;
+      for (const c of el.classList) {
+        if (/^(dark|dark-theme|theme-dark|dark-mode|gux-dark-theme)$/i.test(c)) return true;
+      }
+      for (const attr of ['data-theme', 'gux-theme', 'data-gux-theme', 'theme', 'data-color-scheme']) {
+        if (/dark/i.test(el.getAttribute(attr) || '')) return true;
+      }
+    }
+    if (getComputedStyle(root).colorScheme === 'dark') return true;
+
+    // Walk up from the cards' table to the first opaque background: that is
+    // the surface the cards sit on. (gux-table itself is made transparent
+    // by cards.css, so start from its parent.)
+    const table = document.querySelector('.widget-type-AGENT_STATUS gux-table');
+    for (let el = table ? table.parentElement : body; el; el = el.parentElement) {
+      const L = luminance(getComputedStyle(el).backgroundColor);
+      if (L != null) return L < 0.5;
+    }
+    // Nothing opaque anywhere — go by the text colour Genesys gives the
+    // widget (NOT the cards, whose colour cards.css sets in dark mode).
+    const widget = document.querySelector('.widget-type-AGENT_STATUS');
+    const L = widget ? luminance(getComputedStyle(widget).color) : null;
+    return L != null && L > 0.6;
+  }
+
+  function applyTheme() {
+    const root = document.documentElement;
+    let dark;
+    if (settings.theme === 'dark') dark = true;
+    else if (settings.theme === 'light') dark = false;
+    else {
+      try { dark = genesysIsDark(); } catch (e) { dark = false; }
+    }
+    root.classList.toggle('agent-cards-dark', dark);
+  }
+
+  // Genesys' toggle flips a class/attribute/style on the document; the 2s
+  // discover() poll below is the safety net for anything it doesn't.
+  if (typeof MutationObserver !== 'undefined') {
+    const themeObserver = new MutationObserver(applyTheme);
+    themeObserver.observe(document.documentElement, { attributes: true });
+    const watchBody = () => document.body && themeObserver.observe(document.body, { attributes: true });
+    if (document.body) watchBody(); else document.addEventListener('DOMContentLoaded', watchBody, { once: true });
   }
 
   apply();
@@ -77,6 +144,7 @@
       }
     }
     containers = [...found];
+    applyTheme();
   }
   discover();
   setInterval(discover, 2000);

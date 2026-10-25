@@ -22,4 +22,5 @@ globalThis.AGENT_CARDS_DEFAULTS = globalThis.AGENT_CARDS_DEFAULTS || {
   callTimerReplaces: true, // Interacting: show call timer instead of main timer
   wallboard: false,        // promote the Agent Status widget to a full-width band on top
   wallboardHeight: 55,     // wallboard mode: agent band height, in vh (% of screen)
+  theme: 'auto',           // 'auto' follows Genesys' own dark-mode toggle | 'light' | 'dark'
 };
