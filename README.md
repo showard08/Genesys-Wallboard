@@ -27,7 +27,10 @@ from the same popup at any time.
 
 Everything applies live — card style (large boxes / compact rows), cards per
 row, text size, wallboard mode with height slider, auto-scroll speed and
-pause, and Interacting-call styling. Settings sync with the browser profile.
+pause, Interacting-call styling, and theme. Theme defaults to **Auto**, which
+follows the dark-mode toggle on the Genesys dashboard itself (cards go dark
+with light text when Genesys does); it can also be forced to Light or Dark.
+Settings sync with the browser profile.
 
 ## How it works
 

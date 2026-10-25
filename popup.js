@@ -155,6 +155,8 @@ function render(s) {
   $('glowPulse').checked = current.glowPulse;
   $('callTimerReplaces').checked = current.callTimerReplaces;
   $('wallboardHeight').value = String(current.wallboardHeight);
+  const theme = ['auto', 'light', 'dark'].includes(current.theme) ? current.theme : 'auto';
+  document.querySelector(`input[name="theme"][value="${theme}"]`).checked = true;
   refresh();
 }
 
@@ -175,6 +177,7 @@ function read() {
   current.callTimerReplaces = $('callTimerReplaces').checked;
   current.wallboard = $('wallboard').checked;
   current.wallboardHeight = parseInt($('wallboardHeight').value, 10);
+  current.theme = document.querySelector('input[name="theme"]:checked')?.value || 'auto';
   return { ...current };
 }
 
