@@ -1,6 +1,9 @@
 /* Site registration, shared by popup.js and background.js.
    Wallboard-only edition: the user enables the extension on their own
-   Genesys domain from the popup — no allow-list, no enterprise policy.
+   Genesys domain from the popup — no configuration files, no enterprise
+   policy. The manifest's optional_host_permissions list the Genesys Cloud
+   regional domains, so the browser will refuse to grant access to anything
+   else; hostAllowed() mirrors that list so the popup can say so up front.
    The content script is scoped to that host's /directory/ area: the
    analytics dashboards live at https://<host>/directory/#/analytics/… and
    the #fragment can't be matched by the browser, so /directory/* is the
@@ -20,6 +23,21 @@ function sitePatterns(host) {
      styled on page load. "*" straight after the path segment covers both
      with and without a trailing slash. */
   return [`https://${host}/directory*`, `https://${host}/analytics-ui*`];
+}
+
+/* True if the manifest allows us to ask for access to this host. Derived
+   from optional_host_permissions so there is one source of truth: each
+   entry is "https://*.example.com/*", which matches example.com and any
+   subdomain of it. */
+function hostAllowed(host) {
+  const patterns = chrome.runtime.getManifest().optional_host_permissions || [];
+  return patterns.some((p) => {
+    const m = /^https:\/\/(\*\.)?([^/*]+)\/\*$/.exec(p);
+    if (!m) return p === 'https://*/*';
+    const domain = m[2].toLowerCase();
+    const h = host.toLowerCase();
+    return h === domain || (!!m[1] && h.endsWith('.' + domain));
+  });
 }
 
 function siteScriptId(host) {

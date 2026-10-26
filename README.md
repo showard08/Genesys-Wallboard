@@ -20,8 +20,11 @@ deployments: see genesys-wallboard-cards.)
    the permission prompt.
 
 The extension only runs on sites you enable, and only on their
-`/directory/` pages (where the analytics dashboards live). Remove a site
-from the same popup at any time.
+`/directory/` pages (where the analytics dashboards live). It can only be
+enabled on Genesys Cloud domains (`*.mypurecloud.com`, `.ie`, `.de`, `.jp`,
+`.com.au`, `*.pure.cloud` and `*.us-gov-pure.cloud`) — the manifest doesn't
+allow it to request access to anything else. Remove a site from the same
+popup at any time.
 
 ## Settings
 

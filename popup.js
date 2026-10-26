@@ -108,6 +108,10 @@ $('addSite').addEventListener('click', () => {
     siteMsg('Switch to your Genesys analytics dashboard tab (an https:// page) and try again.', true);
     return;
   }
+  if (!hostAllowed(host)) {
+    siteMsg(`${host} isn't a Genesys Cloud site. This extension can only be enabled on Genesys Cloud domains (mypurecloud.* / pure.cloud).`, true);
+    return;
+  }
   // Soft steer: the wallboard lives under /directory/ (the analytics
   // dashboards). Enabling works from anywhere on the host, but scripts only
   // run on /directory/* pages, so tell the user if they're elsewhere.
